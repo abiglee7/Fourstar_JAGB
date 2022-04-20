@@ -1,7 +1,8 @@
 """
+Author: Abigail Lee
+
 This script reads in raw .txt photometry files, cleans the J band magnitudes based on their chi, sharp, and error values, and outputs a cleaned .csv file for each epoch.
 """
-
 
 #!/usr/bin/python
 
