@@ -1,7 +1,9 @@
 """
 Author: Abigail Lee
 
-This script reads in raw .txt photometry files, cleans the J band magnitudes based on their chi, sharp, and error values, and outputs a cleaned .csv file for each epoch.
+This script reads in raw .txt photometry files (read_file), cleans the J band magnitudes based on their chi, sharp, and error values, and outputs a cleaned .csv file for each epoch(clean_photometry).
+
+This script also checks for 2MASS zeropoints.
 """
 
 #!/usr/bin/python
@@ -11,6 +13,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import glob
 from matplotlib import gridspec
+from astroquery.vizier import Vizier
+import astropy.units as u
+from astropy.coordinates import SkyCoord
+
 
 def read_file(filename):
 
@@ -27,176 +33,98 @@ def read_file(filename):
     
 
 
-def clean_photometry(galaxy, jcol, secondcol=None, secondcolname=None,
-                    cleanerr=False, cleanchi=False, cleansharp=False,
-                    jcolerr=None, jcolsharp=None, jcolchi=None,
-                    const_err=None, A_err=None, p_err=None,
-                    const_sharp=None, A_sharp=None, p_sharp=None,
-                    const_chi=None, p_chi=None,
-                    plot=True,
-                    jlower=None, jupper=None,save_fig=False,name=None, date=None):
+    
+def check_2mass_zps(directory,ra_list, dec_list,maxsep=2.0,jcol=3,max_mag=None,mask=None):
+
     """
-    Given a Pandas dataframe, clean J-band magnitudes based on error, chi, sharp
-    
-    galaxy: pandas dataframe
-    jcol, jcolerr, jcolsharp, jcolchi: column index (e.g., 1)
-    secondcol, secolname: index and name of secondcol (H or K) to make a test CMD
-    const_err, A_err, p_err: parameters for cleaning functions (see paper for exact functional form)
-    cleanerr, cleanchi, cleansharp: boolean, whether or not you want to clean on this parameter
-    plot: do you want to plot it or not?
-    jlower, jupper = limits for magnitude plots
-    """
-        
-    def error_cut(mag):
-        """
-        Cleans photometry based on error value.
-        """
-        return const_err+ A_err*np.exp(mag-p_err)
+    Compares brightest stars in catalog to 2mass to check for offsets in the J band.
 
-    def sharp_cut(mag):
-        """
-        Cleans photometry based on sharp value.
-        """
-        return const_sharp + A_sharp*np.exp(mag-p_sharp)
-
-    def chi_cut(mag):
-        """
-        Cleans photometry based on chi value.
-        """
-        return const_chi+np.exp(-mag+p_chi)
-    
-    
-    # plot photometric quality cuts
-    if plot==True:
-        plt.figure(figsize=(7,7))
-        
-        gs = gridspec.GridSpec(3, 1,height_ratios=[1,1, 1])
-        ax0 = plt.subplot(gs[0])
-        ax0.set_ylabel('$\sigma$',fontsize=20)
-        ax0.set_ylim(0,.2)
-        ax0.plot(np.arange(15,23,.1),error_cut(np.arange(15,23,.1)), color='red')
-        
-        
-        
-        # error
-        bad_error = galaxy.loc[galaxy[jcolerr].astype(float)>error_cut(galaxy[jcol].astype(float))]
-        good_error= galaxy.loc[galaxy[jcolerr].astype(float)<error_cut(galaxy[jcol].astype(float))]
-        ax0.scatter(bad_error[jcol].astype(float),bad_error[jcolerr].astype(float),alpha=.3,color='grey',s=.5)
-        ax0.scatter(good_error[jcol].astype(float),good_error[jcolerr].astype(float),alpha=1,color='black',s=.5)
-        
-        
-        ax1 = plt.subplot(gs[1])
-        
-        ax1.plot(np.arange(15,23,.1), sharp_cut(np.arange(15,23,.1)),color='red')
-        ax1.plot(np.arange(15,23,.1), -sharp_cut(np.arange(15,23,.1)),color='red')
-        
-        bad_sharp_1 = galaxy.loc[(galaxy[jcolsharp].astype(float)<-sharp_cut(galaxy[jcol].astype(float)))]
-        bad_sharp_2 = galaxy.loc[(galaxy[jcolsharp].astype(float)>sharp_cut(galaxy[jcol].astype(float)))]
-        good_sharp = galaxy.loc[(galaxy[jcolsharp].astype(float)<sharp_cut(galaxy[jcol].astype(float)))&(galaxy[jcolsharp].astype(float)>-sharp_cut(galaxy[jcol].astype(float)))]
-
-
-
-        ax1.scatter(bad_sharp_1[jcol].astype(float),bad_sharp_1[jcolsharp].astype(float),alpha=.3,color='grey',s=.5)
-        ax1.scatter(bad_sharp_2[jcol].astype(float),bad_sharp_2[jcolsharp].astype(float),alpha=.3,color='grey',s=.5)
-        ax1.scatter(good_sharp[jcol].astype(float),good_sharp[jcolsharp].astype(float),alpha=1,color='black',s=.5)
-
-
-        ax1.set_ylim(-.9,.9)
-        ax1.set_ylabel('Sharp',fontsize=20)
-
-        
-        ax1.set_ylim(-2,2)
-        
-        ax2 = plt.subplot(gs[2])
-        ax2.set_ylim(-.04,.3)
-        ax2.set_ylabel('$\chi$',fontsize=20)
-        ax2.plot(np.arange(15,23,.1), chi_cut(np.arange(15,23,.1)),color='red')
-
-        bad_chi = galaxy.loc[galaxy[jcolchi].astype(float)>chi_cut(galaxy[jcol].astype(float))]
-        good_chi= galaxy.loc[galaxy[jcolchi].astype(float)<chi_cut(galaxy[jcol].astype(float))]
-        ax2.scatter(bad_chi[jcol].astype(float),bad_chi[jcolchi].astype(float),alpha=.3,color='grey',s=.5)
-        ax2.scatter(good_chi[jcol].astype(float),good_chi[jcolchi].astype(float),alpha=1,color='black',s=.5)
-
-        
-
-        ax0.tick_params(
-            axis='x',          # changes apply to the x-axis
-            which='both',      # both maKor and minor ticks are affected
-            bottom=False,      # ticks along the bottom edge are off
-            top=False,         # ticks along the top edge are off
-            labelbottom=False)
-
-        ax1.tick_params(
-            axis='x',          # changes apply to the x-axis
-            which='both',      # both maKor and minor ticks are affected
-            bottom=False,      # ticks along the bottom edge are off
-            top=False,         # ticks along the top edge are off
-            labelbottom=False)
-        
-        ax0.set_xlim(jlower,jupper)
-        ax1.set_xlim(jlower,jupper)
-        ax2.set_xlim(jlower,jupper)
-        
-        plt.xlabel('J',fontsize=20)
-        plt.subplots_adjust(hspace=0)
-        ax0.set_title(str(name)+': '+str(date),fontsize=20)
-        
-        if save_fig==True:
-            plt.savefig('/Users/abigaillee/Documents/Research/Fourstar_images/'+str(name)+str(date)+'.png')
-    
-    if cleanerr==True:
-        galaxy = galaxy.loc[galaxy[jcolerr].astype(float)<error_cut(galaxy[jcol].astype(float))]
-        
-    
-    if cleansharp==True:
-        galaxy = galaxy.loc[galaxy[jcolsharp].astype(float)<sharp_cut(galaxy[jcol].astype(float))]
-        galaxy = galaxy.loc[galaxy[jcolsharp].astype(float)>-sharp_cut(galaxy[jcol].astype(float))]
-     
-    if cleanchi==True:
-        galaxy = galaxy.loc[galaxy[jcolchi].astype(float)<chi_cut(galaxy[jcol].astype(float))]
-    
-    # plot a CMD to check how well it was cleaned:
-    if secondcolname=='H':
-        plt.figure(figsize=(4,5))
-        plt.scatter(galaxy[jcol].astype(float)-galaxy[secondcol].astype(float), galaxy[jcol].astype(float),s=1,color='black')
-        plt.xlim(0.5,1.5)
-        plt.ylim(21,16)
-        plt.axvline(1.1)
-        plt.axvline(1.35)
-    if secondcolname=='K':
-        plt.figure(figsize=(4,5))
-        plt.scatter(galaxy[jcol].astype(float)-galaxy[secondcol].astype(float), galaxy[jcol].astype(float),s=1,color='black')
-        plt.xlim(0.5,2.5)
-        plt.ylim(21,16)
-        plt.axvline(1.4)
-        plt.axvline(2)
-    
-
-    return galaxy
-
-def combine(jcol, cleanerr=False, cleanchi=False, cleansharp=False,
-                    jcolerr=None, jcolsharp=None, jcolchi=None,
-                    const_err=None, A_err=None, p_err=None,
-                    const_sharp=None, A_sharp=None, p_sharp=None,
-                    const_chi=None, p_chi=None,
-                    plot=True,
-                    jlower=None, jupper=None,save_fig=False,name=None, folder_name=None, date=None, secondcol=None, secondcolname=None):
-    """
-    Reads in .txt file and then outputs cleaned photometry pandas dataframe
+    directory: directory with all raw photometry files
+    maxsep: maximum seperation between 2mass catalog and merged Fourstar catalog in arcseconds
+    jcol: column in text file with J magnitude (default: 3)
+    ra_list, dec_list = list of column indices for ra/dec
+    mask: list of indices to remove from directory of photometry files. Only relevant if photometry file lacks J-band data
     """
 
-    folder = glob.glob('/Users/abigaillee/Photometry/JAGB stars MISC/Fourstar/Raw/'+str(folder_name)+'/*')
-    for i in range(len(folder)):
-        file = read_file(folder[i])
+    # read in Merged photometry catalog
+    dir_ = glob.glob(directory)
+    print(dir_) # double check for ra_list/dec_list ordering
+
+    max_sep = maxsep * u.arcsec
+    
+    # mask out files that do not have J-band photometry. Note that the indices shift after each deletion. 
+    if mask!=None:
+        for j in mask:
+            del dir_[j]
+
+    # loop over each individual epoch
+    for i in range(len(dir_)):
         
-        file = clean_photometry(file, jcol=jcol,
-            jcolsharp=jcolsharp,jcolerr=jcolerr,jcolchi=jcolchi,
-            cleansharp=cleansharp, cleanerr=cleanerr,cleanchi=cleanchi,
-            const_err=const_err, A_err=A_err, p_err=p_err,
-            const_sharp=const_sharp, A_sharp = A_sharp, p_sharp = p_sharp,
-            const_chi=const_chi, p_chi=p_chi,
-            plot=plot,
-            jlower=jlower, jupper=jupper,save_fig=save_fig,
-            name=name, date=date, secondcol=secondcol, secondcolname = secondcolname)
-            
-        file.to_csv('/Users/abigaillee/Photometry/JAGB stars MISC/Fourstar/Cleaned/'+str(name)+'/'+str(name)+'_'+str(date)+'.csv')
+        cat = read_file(dir_[i])
+        
+        racol = ra_list[i]
+        deccol = dec_list[i]
+        
+        # read in 2mass catalog from Vizier using central coordinates from merged catalog
+        v = Vizier(columns=["*","+Jmag"], catalog="II/246")
+        center = SkyCoord(ra=np.mean(cat[racol].astype(float)), dec= np.mean(cat[deccol].astype(float)), unit=(u.deg, u.deg), frame='icrs' )
+        result = v.query_region(center, radius="20m")
+        tmass = result[0]
+
+        if max_mag==None:
+            max_mag = np.max(tmass['Jmag'])+.5
+
+        # cut catalog so that it only contains brightest stars to make matching easier
+        cat = cat[cat[jcol].astype(float)<(max_mag)]
+        
+        if len(cat)==0:
+            print('No matches found')
+            break
+
+        # match two catalogs together
+        c = SkyCoord(ra=tmass['RAJ2000'].data * u.deg, dec=tmass['DEJ2000'].data * u.deg ,frame='icrs') # convert to Skycoord
+        inst = SkyCoord(cat[racol].astype(float)*u.deg,cat[deccol].astype(float)*u.deg,frame='icrs',unit='deg') # convert to Skycoord
+    
+        idx, d2d, d3d = c.match_to_catalog_sky(inst)
+        sep_con = (d2d < max_sep) # only take matches less than 2 arcseconds away from each other
+        inst_matches = cat.iloc[idx[sep_con]]
+        xdata= tmass['Jmag'][sep_con].data
+
+        # calculate median offset and its error on the mean
+        mu = np.median(xdata - inst_matches[jcol].astype(float).values)
+        scatter = np.sqrt(np.sum(((xdata - inst_matches[jcol].astype(float).values)-mu)**2))/(len(xdata))
+               
+        # remove matches that are more than 2-sigma away (e.g., Hatt+17), but only do this for stars with more than 1 match
+        if len(xdata)>1:
+            dummy = xdata
+
+            xdata = xdata[((xdata - inst_matches[jcol].astype(float).values)<(2*scatter+mu))&((xdata - inst_matches[jcol].astype(float).values)>(mu-2*scatter))]
+            inst_matches = inst_matches[((dummy - inst_matches[jcol].astype(float).values)<(2*scatter+mu))&((dummy - inst_matches[jcol].astype(float).values)>(mu-2*scatter))]
+
+        
+            # recalculate median offset and error on the mean
+            mu = np.median(xdata - inst_matches[jcol].astype(float).values)
+            scatter = np.sqrt(np.sum(((xdata - inst_matches[jcol].astype(float).values)-mu)**2))/(len(xdata))
+        if (abs(mu)>.5):
+            print('No good matches found with less than 2-sigma')
+        if len(xdata)==0:
+            print('No matches found after cleaning')
+        
+        # double check that the matches are working
+        plt.figure(figsize=(5,5))
+        plt.scatter(cat[racol].astype(float), cat[deccol].astype(float),alpha=.5,label='Fourstar')
+        plt.scatter(tmass['RAJ2000'],tmass['DEJ2000'],label='2MASS',color='red',alpha=.5)
+        plt.scatter(inst_matches[racol].astype(float), inst_matches[deccol].astype(float), facecolor='none',s=100,edgecolor='black',label='Match') # calculated matches
+        plt.xlabel('R.A.',fontsize=20)
+        plt.ylabel('Dec.',fontsize=20)
+        plt.legend()
+
+        # plot photometric offsets plot
+        plt.figure(figsize=(7,4))
+        plt.scatter(xdata, xdata - inst_matches[jcol].astype(float).values,color='black')
+        plt.axhline(mu,color='black',ls='--')
+        plt.ylim(-.5,.5)
+        plt.axhspan(mu-scatter, mu+scatter,color='grey',alpha=0.4)
+        plt.xlabel('2MASS J',fontsize=20)
+        plt.ylabel('2MASS J - Fourstar J',fontsize=20)
+        print('Median Offset: '+str(np.round(mu,3))+' +/- ' +str(np.round(scatter,3))+' mag')
