@@ -128,3 +128,109 @@ def check_2mass_zps(directory,ra_list, dec_list,maxsep=2.0,jcol=3,max_mag=None,m
         plt.xlabel('2MASS J',fontsize=20)
         plt.ylabel('2MASS J - Fourstar J',fontsize=20)
         print('Median Offset: '+str(np.round(mu,3))+' +/- ' +str(np.round(scatter,3))+' mag')
+        
+def merge_photometry_tmp(catalog, racol, deccol):
+
+    """
+    Unfortunately, TOPCAT only allows for <=5 matches.
+    So if there are 6+ files, I need to do two seperate matches.
+    This function reads in initial 5 matches, averages their ra/dec,
+    and then matches this file again to export to TOPCAT.
+
+    This function should only be used if there are 5+ epochs for a given galaxy
+    (i.e., IC 1613, NGC 300, NGC 3109, M83, Cen A, NGC 247, NGC 6822)
+
+    catalog location: directory with catalog output from TOPCAT (should be 5 matches)
+    racol/deccol: list of indices for ra/dec for each catalog. Note: this will correspond to the order in which you input the files into TOPCAT.
+
+    """
+
+    match = pd.read_csv(str(catalog)+'matchJHK.csv')
+    match = match.iloc[1:] # delete first line because TOPCAT puts in an unncessary header
+
+    match['ra'] = np.nanmean([ match[col] for col in racol], axis=0)
+    match['dec'] = np.nanmean([ match[col] for col in deccol], axis=0)
+
+    match.to_csv(str(catalog)+'matchJHK_test.csv')
+
+def merge_photometry(catalog, jcol, jcolerr, n_epochs,racol, deccol, galaxyname,hcol=None,
+                hcolerr=None, kcol=None, kcolerr=None):
+    """
+    catalog location: directory with catalog output from TOPCAT (should be 5 matches)
+    racol/deccol: list of indices for ra/dec for each catalog. Note: this will correspond to the order in which you input the files into TOPCAT.
+    jcol, hcol, kcol, etc.: lists of indices for magnitudes
+    n_epochs: total number of epochs
+    galaxyname: str for naming the final merged catalog
+    """
+
+    match = pd.read_csv(str(catalog)+'finalmatch.csv')
+    match = match.iloc[1:] # delete first line because TOPCAT puts in an unncessary header
+    print('Total Length of Original Catalog: '+str(len(match)))
+
+    # Check that matches were okay. None of these should exceed ~2 mag.
+    print('Max Photometeric Offsets:')
+    for i in range(1, n_epochs):
+        print(np.max(match[jcol[0]]-match[jcol[i]]))
+
+    # remove stars that don't have K (or H) band data to speed up calculations below (there is no point in having single-band photometry of a given star)
+    match['dummy'] = np.nanmean([ match[col] for col in kcol], axis=0) # creates a dummy variable that shows where nans are
+    match = match[match['dummy'].notna()]
+    print('New Length of Original Catalog: '+str(len(match)))
+
+
+    # create a new dataframe for FINAL clean, merged catalog
+    cat = pd.DataFrame({})
+    cat['ra'] = np.nanmean([ match[col] for col in racol], axis=0)
+    cat['dec'] = np.nanmean([ match[col] for col in deccol], axis=0)
+
+    # calculate weighted average photometry
+    J = []; J_err=[]; H = []; H_err=[]; K = []; K_err = []
+
+    for i in range(len(match)):
+        
+        # J  band
+        a_J = [ match[col].iloc[i] for col in jcol]
+        weights_J = [ match[col].iloc[i] for col in jcolerr]
+        # mask out the dates that don't have values
+        ma_J = np.ma.MaskedArray(a_J, mask=np.isnan(a_J)).compressed()
+        maw_J = np.ma.MaskedArray(weights_J, mask=np.isnan(weights_J)).compressed()
+        # then average
+        J_i = np.ma.average(ma_J, weights=1/np.array(maw_J**2))
+        uncert_J = np.sqrt(np.sum(np.array(maw_J)**2))/len(maw_J)
+        J.append(J_i)
+        J_err.append(uncert_J)
+
+        # H band
+        a_H = [ match[col].iloc[i] for col in hcol]
+        weights_H = [ match[col].iloc[i] for col in hcolerr]
+        ma_H = np.ma.MaskedArray(a_H, mask=np.isnan(a_H)).compressed()
+        maw_H = np.ma.MaskedArray(weights_H, mask=np.isnan(weights_H)).compressed()
+        H_i = np.ma.average(ma_H, weights=1/np.array(maw_H**2))
+        uncert_H = np.sqrt(np.sum(np.array(maw_H)**2))/len(maw_H)
+        H.append(H_i)
+        H_err.append(uncert_H)
+
+        # K band
+        a_K = [ match[col].iloc[i] for col in kcol]
+        weights_K = [ match[col].iloc[i] for col in kcolerr]
+        ma_K = np.ma.MaskedArray(a_K, mask=np.isnan(a_K)).compressed()
+        maw_K = np.ma.MaskedArray(weights_K, mask=np.isnan(weights_K)).compressed()
+        K_i = np.ma.average(ma_K, weights=1/np.array(maw_K**2))
+        uncert_K = np.sqrt(np.sum(np.array(maw_K)**2))/len(maw_K)
+        K.append(K_i)
+        K_err.append(uncert_K)
+
+
+    J = np.array(J)
+    H = np.array(H)
+    K = np.array(K)
+
+    cat['J']=J
+    cat['H']=H
+    cat['K']=K
+    cat['J_err'] = J_err
+    cat['H_err'] = H_err
+    cat['K_err'] = K_err
+
+    cat.to_csv('/Users/abigaillee/Photometry/JAGB stars MISC/Fourstar/Merged/'+str(galaxyname)+'.csv')
+
