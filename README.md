@@ -6,4 +6,4 @@ These scripts and jupyter notebooks clean, calibrate, and merge raw photometry f
 
 1. clean_galaxies.ipynb cleans the photometry based off J-band chi, sharp, and error values. 
 2. double check 2MASS zeropoints.ipynb then matches the brighest stars in the photometry files to 2MASS to see if there are any additional photometric offseets. 
-3. 
+3. Merge Epochs.ipynb computes weighted average photometry across all individual epochs. 
