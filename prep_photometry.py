@@ -180,7 +180,7 @@ def clean_photometry(galaxy, jcol, secondcol=None, secondcolname=None,
 
     return galaxy
 
-def combine(jcol, cleanerr=False, cleanchi=False, cleansharp=False,
+def combine(jcol, hcol, kcol, offsetsname, cleanerr=False, cleanchi=False, cleansharp=False,
                     jcolerr=None, jcolsharp=None, jcolchi=None,
                     const_err=None, A_err=None, p_err=None,
                     const_sharp=None, A_sharp=None, p_sharp=None,
@@ -189,6 +189,7 @@ def combine(jcol, cleanerr=False, cleanchi=False, cleansharp=False,
                     jlower=None, jupper=None,save_fig=False,name=None, folder_name=None, date=None, secondcol=None, secondcolname=None):
     """
     Reads in .txt file and then outputs cleaned photometry pandas dataframe
+    offsetsname: name for folder containing 2MASS - Fourstar photometric offsets.
     """
 
     folder = glob.glob('/Users/abigaillee/Photometry/JAGB stars MISC/Fourstar/Raw/'+str(folder_name)+'/*')
@@ -204,10 +205,21 @@ def combine(jcol, cleanerr=False, cleanchi=False, cleansharp=False,
             plot=plot,
             jlower=jlower, jupper=jupper,save_fig=save_fig,
             name=name, date=date, secondcol=secondcol, secondcolname = secondcolname)
-            
-        file.to_csv('/Users/abigaillee/Photometry/JAGB stars MISC/Fourstar/Cleaned/'+str(name)+'/'+str(name)+'_'+str(date)+'.csv')
+        
+        # apply 2MASS zeropoints
+        offsets = pd.read_csv('/Users/abigaillee/Photometry/JAGB stars MISC/Fourstar/Offsets/'+str(offsetsname)+'.csv')
+        offset_epoch = offsets[(offsets['Date']==folder_name[-10:])] # pull the determined offsets for the relevant date
 
-    
+        # create dummy variable to avoid over-writing
+        dummy = file
+        
+        # overwrite columns
+        dummy[jcol]=file[jcol].astype(float)+np.array(offset_epoch['J'])
+        dummy[hcol]=file[hcol].astype(float)+np.array(offset_epoch['H'])
+        dummy[kcol]=file[kcol].astype(float)+np.array(offset_epoch['K'])
+
+        dummy.to_csv('/Users/abigaillee/Photometry/JAGB stars MISC/Fourstar/Cleaned/'+str(name)+'/'+str(name)+'_'+str(date)+'.csv')
+
         
 def merge_photometry_tmp(catalog, racol, deccol):
 
@@ -582,3 +594,29 @@ def check_2mass_zps_sparse(fiducial,directory,ra_list, dec_list,jcol,hcol, kcol,
     offset_df = pd.DataFrame({'Date':[date[-10:] for date in dir_], 'J':J_offsets, 'H':H_offsets,'K':K_offsets})
     return offset_df
             
+def integrate_2mass_zps(tmass_df, tmass_df2, fiducial, galaxyname):
+    """
+    Applies 2MASS zeropoints. We have two dataframes: one where epochs were succesfully matched with 2MASS.
+    The second dataframe is all the remaining epochs matched to the "best" epoch.
+
+
+    tmass_df: dataframe from check_2mass_zps. Contains the 2MASS - Fourstar offsets
+    tmass_df2: dataframe from check_2mass_zps_sparse. Contains the Fiducial Fourstar - Epoch_i Fourstar
+    fiducial: epoch that was used to create the offsets
+    """
+
+    tmp = pd.DataFrame({'Date':tmass_df2['Date']})
+
+    tmp['J'] = tmass_df2['J'] + np.array(tmass_df[tmass_df['Date']==fiducial]['J'])# fiducial offset (first offset)
+    tmp['H'] = tmass_df2['H'] + np.array(tmass_df[tmass_df['Date']==fiducial]['H'])# fiducial offset (first offset)
+    tmp['K'] = tmass_df2['K'] + np.array(tmass_df[tmass_df['Date']==fiducial]['K'])# fiducial offset (first offset)
+
+    # add rows that were sucessfully matched to 2mass
+    tmp2 = tmass_df.dropna()
+
+
+    # append the two dataframes together
+    final_offsets =  pd.concat([tmp, tmp2],ignore_index=True)
+
+    final_offsets.to_csv('/Users/abigaillee/Photometry/JAGB stars MISC/Fourstar/Offsets/'+str(galaxyname)+'.csv')
+
