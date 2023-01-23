@@ -3,16 +3,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from astropy.io import fits
+import astropy.wcs as wcs
 
 def read_file(filename):
-
     """
     Reads in a photometry .txt file and turns it into a pandas dataframe for easier use
-    
-    jcol: column index that contains J-band photometry (e.g. 3)
-    second_col: column index that contains either J-band or H-band photometry
-    second_col_name: Indicate whether second magnitude is H or K, str
-    
     """
     
     with open(filename) as f:
@@ -21,7 +17,13 @@ def read_file(filename):
     
     galaxy.columns = ['ID','X', 'Y','Mag','Error', 'Ext_err','Num','chi','sharp','var','blunder']
     galaxy = galaxy.iloc[3:]
-
-
     
     return galaxy
+    
+def assign_radec(filename, image):
+    
+    hdulist = fits.open(image)
+    w = wcs.WCS(hdulist[0].header)
+    ra, dec = w.all_pix2world(filename['X'].astype(float), filename['Y'].astype(float), 1)
+    
+    return ra, dec
