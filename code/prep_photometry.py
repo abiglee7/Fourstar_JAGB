@@ -18,4 +18,10 @@ def read_file(filename):
     with open(filename) as f:
         galaxy = f.readlines()
     galaxy = pd.DataFrame([x.strip().split() for x in galaxy])
+    
+    galaxy.columns = ['ID','X', 'Y','Mag','Error', 'Ext_err','Num','chi','sharp','var','blunder']
+    galaxy = galaxy.iloc[3:]
+
+
+    
     return galaxy
