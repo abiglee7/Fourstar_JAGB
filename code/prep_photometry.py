@@ -1,7 +1,7 @@
 #!/usr/bin/python 
 
 from matplotlib import gridspec
-simport pandas as pd
+import pandas as pd
 from astropy.io import fits
 import astropy.wcs as wcs
 
