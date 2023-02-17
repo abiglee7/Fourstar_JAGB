@@ -57,6 +57,7 @@ def compute_rgc_wholegalaxy(catalog,glx_ctr, glx_PA, glx_incl, glx_dist,testing_
     Returns RGC (in kpc) for every object in a galaxy catalog.
     
     testing_phase: integer of numbers to test the catalog
+    
     """
     
     if testing_phase==None:
@@ -69,11 +70,12 @@ def compute_rgc_wholegalaxy(catalog,glx_ctr, glx_PA, glx_incl, glx_dist,testing_
                                glx_incl=glx_incl,
                                glx_dist=glx_dist )
                                ))
-        df = pd.DataFrame({'ra':catalog['ra'],'dec':catalog['dec'], 'rgc':np.array(rgc)*1000}) # transform from kpc to Mpc
+        return np.array(rgc)*1000
+
     else: # test to see if PA/incl is right
         test = np.random.randint(len(catalog), size=testing_phase)
         rgc=[]
-        for i in range(len(test)):
+        for i in test:
 
             rgc.append(np.array(compute_rgc(ra=np.array(catalog['ra'])[i], dec=np.array(catalog['dec'])[i],
                                glx_ctr=glx_ctr,
@@ -81,7 +83,6 @@ def compute_rgc_wholegalaxy(catalog,glx_ctr, glx_PA, glx_incl, glx_dist,testing_
                                glx_incl=glx_incl,
                                glx_dist=glx_dist )
                                ))
-        df = pd.DataFrame({'ra':catalog['ra'][test],'dec':catalog['dec'][test], 'rgc':np.array(rgc)*1000}) # transform from kpc to Mpc
-    return df
     
+        return np.array(rgc)*1000, test
 
