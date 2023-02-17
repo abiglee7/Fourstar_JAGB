@@ -51,21 +51,37 @@ def compute_rgc(ra,
 
     return obj_dist
 
-def compute_rgc_wholegalaxy(catalog,glx_ctr, glx_PA, glx_incl, glx_dist):
+def compute_rgc_wholegalaxy(catalog,glx_ctr, glx_PA, glx_incl, glx_dist,testing_phase=None):
+    
     """
     Returns RGC (in kpc) for every object in a galaxy catalog.
+    
+    testing_phase: integer of numbers to test the catalog
     """
     
-    rgc=[]
-    for i in range(len(catalog)):
+    if testing_phase==None:
+        rgc=[]
+        for i in range(len(catalog)):
 
-        rgc.append(np.array(compute_rgc(ra=np.array(catalog['ra'])[i], dec=np.array(catalog['dec'])[i],
-                           glx_ctr=glx_ctr,
-                           glx_PA = glx_PA,
-                           glx_incl=glx_incl,
-                           glx_dist=glx_dist )
-                           ))
-    df = pd.DataFrame({'ra':catalog['ra'],'dec':catalog['dec'], 'rgc':np.array(rgc)*1000}) # transform from kpc to Mpc
+            rgc.append(np.array(compute_rgc(ra=np.array(catalog['ra'])[i], dec=np.array(catalog['dec'])[i],
+                               glx_ctr=glx_ctr,
+                               glx_PA = glx_PA,
+                               glx_incl=glx_incl,
+                               glx_dist=glx_dist )
+                               ))
+        df = pd.DataFrame({'ra':catalog['ra'],'dec':catalog['dec'], 'rgc':np.array(rgc)*1000}) # transform from kpc to Mpc
+    else: # test to see if PA/incl is right
+        test = np.random.randint(len(catalog), size=testing_phase)
+        rgc=[]
+        for i in range(len(test)):
+
+            rgc.append(np.array(compute_rgc(ra=np.array(catalog['ra'])[i], dec=np.array(catalog['dec'])[i],
+                               glx_ctr=glx_ctr,
+                               glx_PA = glx_PA,
+                               glx_incl=glx_incl,
+                               glx_dist=glx_dist )
+                               ))
+        df = pd.DataFrame({'ra':catalog['ra'][test],'dec':catalog['dec'][test], 'rgc':np.array(rgc)*1000}) # transform from kpc to Mpc
     return df
     
 
