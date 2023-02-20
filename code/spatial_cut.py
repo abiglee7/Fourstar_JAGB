@@ -22,7 +22,7 @@ def compute_rgc(ra,
     ra/dec: array of all ra/dec of objects
     glx_ctr: galaxy center, list, e.g. [0,0]
     glx_PA: galaxy position angle in degrees,e.g. 38
-    glx_incl: galaxy inclination angle
+    glx_incl: galaxy inclination angle. Should be <90
     glx_dist: distance to galaxy
     """
 
