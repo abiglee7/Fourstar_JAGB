@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
+from matplotlib import gridspec
 
 
-def nir_trgb(galaxy, y_interc_J, mu_init,name, err_calcJ , y_intercep_H):
+def nir_trgb_measure(galaxy, y_interc_J, mu_init,name, err_calcJ , y_intercep_H):
 
     """
     y_interc: expected TRGB magnitude
@@ -89,10 +91,24 @@ def nir_trgb(galaxy, y_interc_J, mu_init,name, err_calcJ , y_intercep_H):
 
             print('trgb j='+str(value_trgb-.85))
             
-            # save edge response and luminosity function
-#             pd.read_csv('trgb_info.csv').to_csv('/Users/abigaillee/Photometry/python_scripts/fourstar_project/'+str(name)+'/t_j_trgblf.csv')
+            # plot edge response and luminosity function
+            cat1 = pd.read_csv('/Users/abigaillee/Documents/Photometry/python_scripts/fourstar_project/trgb_info.csv')
+            cat2 = pd.read_csv('/Users/abigaillee/Documents/Photometry/python_scripts/fourstar_project/trgb_edge_info.csv')
+            
+            plt.figure(figsize=(5,3))
+            gs = gridspec.GridSpec(1, 2, width_ratios=[7, 4])
 
-#             pd.read_csv('trgb_edge_info.csv').to_csv('/Users/abigaillee/Photometry/python_scripts/fourstar_project/'+str(name)+'/t_j_trgbedr.csv')
+            ax1 = plt.subplot(gs[0])
+            ax1.plot(cat1['s'], cat1['c'], color='forestgreen',lw=3)
+            ax1.plot(cat1['N'], cat1['c'], color='grey',alpha=.5)
+            ax1.set_ylim(23, 19)
+
+            ax2 = plt.subplot(gs[1],sharey = ax1)
+            ax2.plot(cat2['r'], cat2['cTRGB'],color='black')
+            ax2.fill_between(cat2['r'], 0,cat2['cTRGB'], facecolor='grey',alpha=.5)
+            ax2.set_xlim(0,)
+            plt.subplots_adjust(wspace=0)
+            plt.show()
 
         elif band=='H':
             x = np.arange(-1,1.6,.01)
@@ -163,10 +179,23 @@ def nir_trgb(galaxy, y_interc_J, mu_init,name, err_calcJ , y_intercep_H):
 
             print('trgb h='+str(value_trgb-1.62))
             
-            # save edge response and luminosity function
-#             pd.read_csv('trgb_info.csv').to_csv('/Users/abigaillee/Photometry/python_scripts/fourstar_project/'+str(name)+'/t_j_trgblf.csv')
+            cat1 = pd.read_csv('/Users/abigaillee/Documents/Photometry/python_scripts/fourstar_project/trgb_info.csv')
+            cat2 = pd.read_csv('/Users/abigaillee/Documents/Photometry/python_scripts/fourstar_project/trgb_edge_info.csv')
+            
+            plt.figure(figsize=(5,3))
+            gs = gridspec.GridSpec(1, 2, width_ratios=[7, 4])
 
-#             pd.read_csv('trgb_edge_info.csv').to_csv('/Users/abigaillee/Photometry/python_scripts/fourstar_project/'+str(name)+'/t_j_trgbedr.csv')
-            
-            
+            ax1 = plt.subplot(gs[0])
+            ax1.plot(cat1['s'], cat1['c'], color='forestgreen',lw=3)
+            ax1.plot(cat1['N'], cat1['c'], color='grey',alpha=.5)
+            ax1.set_ylim(23, 19)
+
+
+            ax2 = plt.subplot(gs[1],sharey = ax1)
+            ax2.plot(cat2['r'], cat2['cTRGB'],color='black')
+            ax2.fill_between(cat2['r'], 0,cat2['cTRGB'], facecolor='grey',alpha=.5)
+            ax2.set_xlim(0,)
+
+            plt.subplots_adjust(wspace=0)
+            plt.show()
         
