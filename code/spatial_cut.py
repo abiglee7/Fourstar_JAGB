@@ -51,38 +51,3 @@ def compute_rgc(ra,
 
     return obj_dist
 
-def compute_rgc_wholegalaxy(catalog,glx_ctr, glx_PA, glx_incl, glx_dist,testing_phase=None):
-    
-    """
-    Returns RGC (in kpc) for every object in a galaxy catalog.
-    
-    testing_phase: integer of numbers to test the catalog
-    
-    """
-    
-    if testing_phase==None:
-        rgc=[]
-        for i in range(len(catalog)):
-
-            rgc.append(np.array(compute_rgc(ra=np.array(catalog['ra'])[i], dec=np.array(catalog['dec'])[i],
-                               glx_ctr=glx_ctr,
-                               glx_PA = glx_PA,
-                               glx_incl=glx_incl,
-                               glx_dist=glx_dist )
-                               ))
-        return np.array(rgc)*1000
-
-    else: # test to see if PA/incl is right
-        test = np.random.randint(len(catalog), size=testing_phase)
-        rgc=[]
-        for i in test:
-
-            rgc.append(np.array(compute_rgc(ra=np.array(catalog['ra'])[i], dec=np.array(catalog['dec'])[i],
-                               glx_ctr=glx_ctr,
-                               glx_PA = glx_PA,
-                               glx_incl=glx_incl,
-                               glx_dist=glx_dist )
-                               ))
-    
-        return np.array(rgc)*1000, test
-
