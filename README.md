@@ -8,7 +8,7 @@ Photometry has already been cleaned of non-stellar objects using the J-band erro
 **Acknowledgments:** 
 If you use any photometry in this archive, please cite the relevant paper: 
 
-Lee, A. J., Monson, A., Freedman, W. F., et al. 2023, in prep. 
+Lee, A. J., Monson, A., Freedman, W. F., et al. 2023
 
 **Additional Galaxies:**
 JHK Photometry for the following galaxies is also available upon reasonable request: 
