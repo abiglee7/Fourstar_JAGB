@@ -16,3 +16,4 @@ JHK Photometry for the following galaxies is also available upon reasonable requ
 - M33 (Lee et al. 2022; ApJ, 933, 201)
 - M31 (Ren et al. 2021; ApJ, 907, 18), contact Tongtian Ren 
 
+License: Creative Commons Attribution 4.0 International
