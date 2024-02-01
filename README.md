@@ -1,4 +1,4 @@
-# Fourstar_JAGB
+# "The data for Resolved Near-infrared Stellar Photometry from the Magellan Telescope for 13 Nearby Galaxies: JAGB Method Distances
 
 Author: Abigail J. Lee
 
